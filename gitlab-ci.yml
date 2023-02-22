@@ -1,0 +1,58 @@
+default:
+  tags: [saas-linux-large-amd64] # do not waste your time waiting
+
+include:
+  - template: Auto-DevOps.gitlab-ci.yml
+
+variables:
+  KUBE_INGRESS_BASE_DOMAIN: 34.134.119.247.nip.io
+  KUBE_CONTEXT: mbrandner-group/agentapril22:mirko-1
+  DS_JAVA_VERSION: "8"
+  CI_APPLICATION_REPOSITORY: "$CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG"
+  CI_APPLICATION_TAG: "$CI_COMMIT_SHA"
+  DAST_FULL_SCAN_ENABLED: "true"
+  DAST_BROWSER_SCAN: "true"
+  DAST_BROWSER_ACTION_TIMEOUT: "30s"
+  DAST_BROWSER_NUMBER_OF_BROWSERS: 1
+
+test:
+  allow_failure: true
+
+build: # task: create variant with AutoBuild! Build through Dockerfile? overwriting the ADO build job which does build and push
+  stage: build
+  image: maven:3-jdk-8-slim # maven:3-jdk-11-slim
+  variables:
+    CI_DEBUG_TRACE: "false"
+    JOB_TRACE: "false"
+    SECURE_LOG_LEVEL: "false"
+    TRACE: "false"
+    AUTO_DEVOPS_DEPLOY_DEBUG: "false"
+  script:
+    - mvn clean install -DskipTests=false
+    - mvn package -DskipTests=false -Dmaven.repo.local=./.m2
+  cache:
+    policy: push
+    key: ${CI_COMMIT_SHA}
+    paths:
+      - .m2
+  artifacts:
+    paths:
+    - "Dockerfile"
+    - "target/spring-petclinic-1.5.4.jar"
+
+push:
+  services:
+  - name: docker:20.10.6-dind
+  image: docker:20.10.6
+  variables:
+    DOCKER_DRIVER: overlay2
+  stage: build
+  needs: [build]
+  script:
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build --tag $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:latest .
+    - docker push $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE/$CI_COMMIT_REF_SLUG:latest
+
+
+
