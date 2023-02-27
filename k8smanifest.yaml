@@ -17,8 +17,7 @@ spec:
       containers:
       - name: minikube
         image: petclinic-app-test
-      imagePullSecrets:
-      - name: regcred
+
 ---
 
 apiVersion: v1
