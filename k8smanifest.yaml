@@ -15,8 +15,10 @@ spec:
         app: pet
     spec:
       containers:
-      - name: petclinic
-        image: cadandxc/spring/petclinic-app
+      - name: minikube
+        image: petclinic-app-test
+      imagePullSecrets:
+      - name: regcred
 ---
 
 apiVersion: v1
